@@ -1,5 +1,6 @@
 # Importações para o Web Bot
 from botcity.web import WebBot, Browser, By
+from botcity.web.parsers import table_to_dict
 
 # Importações para integração com o SDK do BotCity Maestro
 from botcity.maestro import *
@@ -112,22 +113,27 @@ def scrape_dollar_rate(bot, data_inicio, data_fim):
             print("A página ainda está carregando.")
             bot.wait(2000)
 
-        # Variável em que será armazenada as datas e a cotação do dolar
-        rate_data = []
-
-        # Extrair dados dos resultados
-        for i in range(3, 10, 1):
-            rate = float(bot.find_element(f'/html/body/div/table/tbody/tr[{i}]/td[3]', By.XPATH).text.replace(',', '.'))
-            date = bot.find_element(f'/html/body/div/table/tbody/tr[{i}]/td[1]', By.XPATH).text.strip()
-
-            rate_data.append({
-                'date': date,
-                'rate': rate
-            })
+        # Selecionar a tabela de resultados
+        table_element = bot.find_element('/html/body/div[1]/table', By.XPATH)
         
-        print(rate_data)
+        # print(table_element)
 
-        return rate_data
+        # Extrair a tabela como dicionário
+        rate_data = table_to_dict(table_element, has_header=True)
+
+        print(f"rate_data: {rate_data}")  # Para verificar o formato e adaptar a extração
+
+        try:
+            # Formate os dados com as chaves atuais que estão disponíveis
+            formatted_data = [
+                {'date': row.get('data', 'Data não encontrada'), 'rate': float(row.get('cotações_em_real1', '0').replace(',', '.'))}
+                for row in rate_data
+                if 'data' in row and 'cotações_em_real1' in row
+            ]
+            print(f"formatted_data: {formatted_data}")
+            return formatted_data
+        except Exception as e:
+            raise Exception(f"Erro ao formatar os dados extraídos: {str(e)}")
 
     except Exception as e:
         raise Exception(f"Erro ao obter taxa do dólar: {str(e)}")
@@ -166,6 +172,9 @@ def get_dollar_rates(bot):
     return rates
 
 def save_excel(file_path, rates):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, file_path)
+    
     try:
         # Abrir ou criar um novo arquivo Excel
         if os.path.exists(file_path):
