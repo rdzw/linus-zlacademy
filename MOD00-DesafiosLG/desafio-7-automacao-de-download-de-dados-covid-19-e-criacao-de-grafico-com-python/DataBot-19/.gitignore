@@ -138,4 +138,5 @@ dmypy.json
 
 # Ignorar o arquivo de credenciais
 credential.json
+token_sheets.json
 config/*.secret

@@ -1,9 +1,9 @@
 from botcity.web import WebBot, Browser, By
 from botcity.maestro import *
+from botcity.plugins.googlesheets import BotGoogleSheetsPlugin
 from webdriver_manager.chrome import ChromeDriverManager
 from owid import catalog
 from datetime import datetime
-
 import pandas as pd
 
 BotMaestroSDK.RAISE_NOT_CONNECTED = False
@@ -24,25 +24,51 @@ class bot(WebBot):
         print(f"Task Parameters are: {execution.parameters}")
 
         try:
+            # Carrega o catálogo de dados
             rc = catalog.RemoteCatalog()
             uri = 'garden/covid/latest/cases_deaths/cases_deaths'
             df = rc[uri]
 
-            # Resetar o índice para trazer a data como uma coluna
             df = df.reset_index()
 
-            # Verificar o nome da coluna de data
-            print(df.columns)  # Confirme o nome correto da coluna de data aqui
+            # Seleciona as colunas desejadas
+            selected_columns = [
+                "country",
+                "date",
+                "days_since_100_total_cases",
+                "days_since_5_total_deaths",
+                "days_since_1_total_cases_per_million",
+                "days_since_0_1_total_deaths_per_million",
+                "days_since_100_total_cases_and_5m_pop"
+            ]
+            df_filtered = df[selected_columns].copy()
+            print('teste')
 
-            # Filtrar para o mês atual
+            # Filtra para o mês atual e para o Brasil
             current_month = datetime.now().month
             current_year = datetime.now().year
-            df['date'] = pd.to_datetime(df['date'])  # Substitua 'date' pelo nome correto, caso seja diferente
-            df_filtered = df[(df['date'].dt.month == current_month) & (df['date'].dt.year == current_year)]
+            df_filtered['date'] = pd.to_datetime(df_filtered['date'])
+            df_filtered = df_filtered[
+                (df_filtered['date'].dt.month == current_month) & 
+                (df_filtered['date'].dt.year == current_year) & 
+                (df_filtered['country'] == 'Brazil')
+            ]
 
-            # Salvar em um arquivo Excel
-            df_filtered.to_excel("relatorio_covid_mes_atual.xlsx", index=False)
-            print("Relatório salvo como 'relatorio_covid_mes_atual.xlsx'.")
+            print(df_filtered)
+
+            # Inicializa o plugin do Google Sheets
+            bot_planilha = BotGoogleSheetsPlugin('credential.json', '1Co2Yuuj23NDZ78GClNFlMebSm5Mcn7x4V5zDBWsbIeM')
+
+            for _, row in df_filtered.iterrows():
+                bot_planilha.add_rows([[
+                    row['country'],
+                    row['date'].strftime('%Y-%m-%d'),
+                    row['days_since_100_total_cases'],
+                    row['days_since_5_total_deaths'],
+                    row['days_since_1_total_cases_per_million'],
+                    row['days_since_0_1_total_deaths_per_million'],
+                    row['days_since_100_total_cases_and_5m_pop']
+                ]])
         
         except Exception as erro:
             print('Erro: ', erro)
