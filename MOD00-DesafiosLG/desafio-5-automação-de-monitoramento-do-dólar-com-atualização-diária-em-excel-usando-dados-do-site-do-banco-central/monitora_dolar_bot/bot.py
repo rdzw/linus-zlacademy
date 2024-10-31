@@ -14,6 +14,8 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 
+BotMaestroSDK.RAISE_NOT_CONNECTED = False
+
 # Classe para gerenciar o Selenium
 class SeleniumWrapper:
     def __init__(self):
@@ -60,18 +62,41 @@ class DollarScraperBot:
 
     def run(self):
         # Configuração do BotCity
-        # maestro = BotMaestroSDK.from_sys_args()
-        # execution = maestro.get_execution()
+        maestro = BotMaestroSDK.from_sys_args()
+        execution = maestro.get_execution()
+        
+        print(f"Task ID: {execution.task_id}")
+        print(f"Task Parameters: {execution.parameters}")
 
         try:
             rates = self.get_dollar_rates()
             self.save_excel(self.file_path, rates)
             self.create_trend_graph(self.file_path)
             print("Processo concluído.")
+            
+            status = AutomationTaskFinishStatus.SUCCESS
+            mensagem = "Tarefa BotMonitoraDolar finalizada com sucesso!"
         except Exception as e:
-            print(f"Ocorreu um erro: {str(e)}")
+            
+            self.bot.save_screenshot("erro.png")
+            
+            maestro.error(
+                task_id=execution.task_id,
+                exception=e,
+                screenshot="erro.png"
+            )
+            
+            status = AutomationTaskFinishStatus.FAILED
+            mensagem = "Tarefa BotMonitoraDolar finalizada com erro!"
+            
         finally:
             self.bot.stop_browser()
+            
+            maestro.finish_task(
+                task_id=execution.task_id,
+                status=status,
+                mensagem=mensagem
+            )
 
     def get_dollar_rates(self):
         url = "https://www.bcb.gov.br/estabilidadefinanceira/historicocotacoes"
@@ -79,7 +104,7 @@ class DollarScraperBot:
 
         self.bot.browse(url)
         data_fim = date.today()
-        data_inicio = data_fim - timedelta(days=7)
+        data_inicio = data_fim - timedelta(days=30)
 
         data_fim_str = data_fim.strftime("%d/%m/%Y")
         data_inicio_str = data_inicio.strftime("%d/%m/%Y")
@@ -88,6 +113,11 @@ class DollarScraperBot:
         return rates
 
     def scrape_dollar_rate(self, data_inicio, data_fim):
+        # Verificar se a página foi carregada
+        while not self.bot.find_element('/html/body/app-root/bcb-cookies/div/div/div/div/button[2]', By.XPATH):
+            print("A página ainda está carregando.")
+            self.bot.wait(2000)
+        
         self.bot.find_element('/html/body/app-root/bcb-cookies/div/div/div/div/button[2]', By.XPATH).click()
         iframe = self.bot.find_element('/html/body/app-root/app-root/div/div/main/dynamic-comp/div/div[2]/div[1]/div/iframe', By.XPATH)
         self.bot.enter_iframe(iframe)
@@ -102,6 +132,12 @@ class DollarScraperBot:
         self.bot.paste("#DATAFIM", data_fim.replace('/', ''))
 
         self.bot.find_element('/html/body/div/form/div/input', By.XPATH).click()
+        
+        # Verificar se a página foi carregada
+        while not self.bot.find_element('/html/body/div[1]/table', By.XPATH):
+            print("A página ainda está carregando.")
+            self.bot.wait(2000)
+            
         table_element = self.bot.find_element('/html/body/div[1]/table', By.XPATH)
         rate_data = table_to_dict(table_element, has_header=True)
 
