@@ -140,3 +140,9 @@ dmypy.json
 credential.json
 token_sheets.json
 config/*.secret
+
+#Ignorar arquivo de imagens
+*.png
+*.jpg
+*.gif
+*.zip
