@@ -71,8 +71,12 @@ class bot(WebBot):
         """Carrega e filtra os dados do catálogo OWID."""
         rc = catalog.RemoteCatalog()
         uri = 'garden/covid/latest/cases_deaths/cases_deaths'
-        df = rc[uri].reset_index()
+        df = rc[uri]
+        df = df.reset_index()
 
+        # Filtra os dados para o país "Brazil"
+        df_brasil = df[df["country"] == "Brazil"]
+        
         # Seleciona as colunas desejadas
         selected_columns = [
             "country",
@@ -83,20 +87,16 @@ class bot(WebBot):
             "days_since_0_1_total_deaths_per_million",
             "days_since_100_total_cases_and_5m_pop"
         ]
-        df_filtered = df[selected_columns].copy()
+        df_filtered = df_brasil[selected_columns].copy()
 
-        # Filtra para o mês atual e para o Brasil
-        current_month = datetime.now().month
-        current_year = datetime.now().year
-        df_filtered['date'] = pd.to_datetime(df_filtered['date'])
-        df_filtered = df_filtered[
-            (df_filtered['date'].dt.month == current_month) & 
-            (df_filtered['date'].dt.year == current_year) & 
-            (df_filtered['country'] == 'Brazil')
-        ]
+        # Pega as 7 últimas linhas do DataFrame filtrado
+        df_last_7_rows = df_filtered.tail(7)
+        print(df_last_7_rows)
 
-        linhas = (f"{len(df_filtered)} linhas filtradas do catalogo da owid.")
-        return df_filtered, linhas
+        linhas = (f"{len(df_last_7_rows)} linhas filtradas do catalogo da owid.")
+        print(linhas)
+        
+        return df_last_7_rows, linhas
 
     def add_to_google_sheets(self, df_filtered):
         """Adiciona os dados filtrados ao Google Sheets."""
@@ -112,8 +112,6 @@ class bot(WebBot):
                 row['days_since_0_1_total_deaths_per_million'],
                 row['days_since_100_total_cases_and_5m_pop']
             ]])
-        sheet = bot_planilha.get_column('B')
-        return sheet
 
     def generate_plot(self, df_filtered):
         """Gera o gráfico com os dados filtrados."""
