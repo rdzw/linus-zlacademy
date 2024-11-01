@@ -50,7 +50,7 @@ class bot(WebBot):
                 values={
                     "data_hora": datetime.now().strftime("%Y-%m-%d_%H-%M"),
                     "linhas_filtradas": linhas,
-                    "google_sheets": "conectado"
+                    "google_sheets": "conectado ao google sheet"
                 }
             )
 
