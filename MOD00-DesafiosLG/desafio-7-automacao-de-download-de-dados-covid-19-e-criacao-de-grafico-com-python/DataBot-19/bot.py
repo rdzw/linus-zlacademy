@@ -5,7 +5,6 @@ from owid import catalog
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import pandas as pd
 
 BotMaestroSDK.RAISE_NOT_CONNECTED = False
 
@@ -53,12 +52,6 @@ class bot(WebBot):
                     "linhas_filtradas": linhas,
                     "google_sheets": "conectado"
                 }
-            )
-
-            maestro.post_artifact(
-                task_id=execution.task_id,
-                artifact_name= 'result.png',
-                filepath= 'grafico_covid_brasil.png'
             )
 
             maestro.finish_task(
