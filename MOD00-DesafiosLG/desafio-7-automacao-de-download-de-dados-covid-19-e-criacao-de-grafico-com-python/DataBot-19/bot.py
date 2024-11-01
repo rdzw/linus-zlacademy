@@ -126,7 +126,7 @@ class bot(WebBot):
         plt.xticks(rotation=45)
         plt.tight_layout()
 
-        # Salva o gráfico como uma imagem
+        # Salvar o gráfico 
         plt.savefig('grafico_covid_brasil.png')
         plt.close()
 
